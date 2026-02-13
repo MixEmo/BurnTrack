@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="theme-color" content="#0a0f0a"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="BurnTrack"/>
+<title>BurnTrack — Quema de Calorías</title>
+<link rel="manifest" href="manifest.json"/>
+<meta name="application-name" content="BurnTrack"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-touch-fullscreen" content="yes"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0a0f0a;
+  --surface:#111811;
+  --card:#161e16;
+  --border:#1f2d1f;
+  --border2:#2a3d2a;
+  --green:#3dff7a;
+  --green2:#25c957;
+  --green-dim:#1a4a2a;
+  --green-glow:rgba(61,255,122,0.12);
+  --orange:#ff8c3d;
+  --red:#ff4f4f;
+  --text:#e8f5e8;
+  --text2:#8aad8a;
+  --text3:#4a6a4a;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;overflow:hidden}
+body{display:flex;flex-direction:column;padding-top:var(--safe-top)}
+
+/* HEADER */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px 12px;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+  background:var(--bg);
+  position:relative;
+  z-index:10;
+}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;letter-spacing:-0.03em;color:var(--green)}
+.logo span{color:var(--text2);font-weight:400}
+.gps-badge{
+  display:flex;align-items:center;gap:6px;
+  font-size:10px;letter-spacing:0.1em;text-transform:uppercase;
+  color:var(--text3);border:1px solid var(--border);
+  padding:5px 10px;border-radius:20px;cursor:pointer;
+  transition:all 0.3s;
+}
+.gps-badge.active{color:var(--green);border-color:var(--green-dim);background:var(--green-glow)}
+.gps-dot{width:6px;height:6px;border-radius:50%;background:var(--text3);transition:all 0.3s}
+.gps-badge.active .gps-dot{background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+/* NAV */
+.nav{
+  display:flex;gap:2px;padding:10px 16px;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;background:var(--bg);
+}
+.nav-btn{
+  flex:1;padding:8px 4px;text-align:center;font-size:10px;
+  letter-spacing:0.12em;text-transform:uppercase;
+  color:var(--text3);border:1px solid transparent;
+  border-radius:6px;cursor:pointer;transition:all 0.2s;
+  font-family:'DM Mono',monospace;background:none;
+}
+.nav-btn.active{color:var(--green);border-color:var(--green-dim);background:var(--green-glow)}
+
+/* SCREENS */
+.screen{display:none;flex:1;overflow-y:auto;padding:0 0 calc(16px + var(--safe-bottom))}
+.screen.active{display:flex;flex-direction:column}
+
+/* ===== SCREEN 1: TRACKER ===== */
+.calorie-ring-wrap{
+  display:flex;flex-direction:column;align-items:center;
+  padding:28px 20px 20px;
+}
+.ring-container{position:relative;width:200px;height:200px}
+.ring-svg{transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:var(--border2);stroke-width:12}
+.ring-fill{
+  fill:none;stroke:var(--green);stroke-width:12;
+  stroke-linecap:round;
+  stroke-dasharray:565;stroke-dashoffset:565;
+  transition:stroke-dashoffset 0.8s cubic-bezier(0.16,1,0.3,1);
+  filter:drop-shadow(0 0 8px var(--green));
+}
+.ring-center{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+}
+.ring-kcal{font-family:'Syne',sans-serif;font-weight:800;font-size:42px;color:var(--green);line-height:1;letter-spacing:-0.03em}
+.ring-unit{font-size:11px;color:var(--text3);letter-spacing:0.15em;margin-top:4px}
+.ring-label{font-size:10px;color:var(--text3);letter-spacing:0.1em;margin-top:2px}
+
+.session-info{
+  display:flex;gap:12px;width:100%;padding:0 20px;margin-top:8px;
+}
+.info-box{
+  flex:1;background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:12px 14px;
+}
+.info-box-label{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
+.info-box-val{font-family:'Syne',sans-serif;font-weight:700;font-size:18px;color:var(--text);letter-spacing:-0.02em}
+.info-box-val.green{color:var(--green)}
+
+/* ACTIVITY SELECTOR */
+.section-head{
+  padding:20px 20px 10px;
+  font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--text3);
+}
+.activity-grid{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:8px;padding:0 16px;
+}
+.act-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:14px 16px;cursor:pointer;
+  transition:all 0.2s;display:flex;align-items:center;gap:12px;
+}
+.act-card:active{transform:scale(0.97)}
+.act-card.selected{border-color:var(--green);background:var(--green-glow)}
+.act-emoji{font-size:22px;flex-shrink:0}
+.act-info{}
+.act-name{font-size:12px;color:var(--text);font-weight:500;line-height:1.2}
+.act-met{font-size:10px;color:var(--text3);margin-top:2px}
+
+/* WEIGHT INPUT */
+.weight-row{
+  display:flex;align-items:center;gap:12px;
+  padding:16px 20px;margin-top:4px;
+}
+.weight-row label{font-size:11px;letter-spacing:0.1em;color:var(--text2);flex-shrink:0}
+.weight-input{
+  flex:1;background:var(--card);border:1px solid var(--border);
+  color:var(--text);font-family:'DM Mono',monospace;font-size:16px;
+  padding:10px 14px;border-radius:8px;outline:none;
+  transition:border-color 0.2s;
+}
+.weight-input:focus{border-color:var(--green)}
+
+/* TIMER CONTROLS */
+.timer-section{padding:16px 20px;display:flex;gap:10px}
+.btn-start{
+  flex:2;padding:16px;border-radius:12px;border:none;cursor:pointer;
+  font-family:'Syne',sans-serif;font-weight:700;font-size:15px;
+  letter-spacing:0.05em;transition:all 0.2s;
+}
+.btn-start.idle{background:var(--green);color:var(--bg)}
+.btn-start.running{background:var(--orange);color:var(--bg)}
+.btn-start.paused{background:var(--green-dim);color:var(--green);border:1px solid var(--green)}
+.btn-start:active{transform:scale(0.97)}
+.btn-stop{
+  flex:1;padding:16px;border-radius:12px;border:1px solid var(--border2);
+  background:var(--card);color:var(--text2);cursor:pointer;
+  font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.1em;
+  transition:all 0.2s;
+}
+.btn-stop:active{transform:scale(0.97)}
+.btn-stop.danger{border-color:#ff4f4f44;color:var(--red)}
+
+/* SPEED (GPS) */
+.speed-bar{
+  margin:0 20px 8px;padding:12px 16px;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  display:flex;align-items:center;gap:14px;
+  transition:opacity 0.3s;
+}
+.speed-bar.hidden{opacity:0;pointer-events:none}
+.speed-icon{font-size:18px}
+.speed-info{flex:1}
+.speed-val{font-family:'Syne',sans-serif;font-weight:700;font-size:20px;color:var(--green);letter-spacing:-0.02em}
+.speed-label{font-size:10px;color:var(--text3);letter-spacing:0.1em}
+.distance-val{font-size:11px;color:var(--text2);margin-top:2px}
+
+/* ===== SCREEN 2: HISTORIAL ===== */
+.history-header{
+  padding:24px 20px 16px;
+  font-family:'Syne',sans-serif;font-weight:800;font-size:24px;
+  letter-spacing:-0.03em;
+}
+.day-total{
+  margin:0 20px 20px;padding:18px 20px;
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.day-total-label{font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--text3)}
+.day-total-val{font-family:'Syne',sans-serif;font-weight:800;font-size:28px;color:var(--green);letter-spacing:-0.03em}
+.day-total-kcal{font-size:12px;color:var(--text3);margin-top:2px}
+
+.history-list{padding:0 20px;display:flex;flex-direction:column;gap:8px}
+.hist-item{
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:14px 16px;display:flex;align-items:center;gap:14px;
+  animation:slideIn 0.3s ease;
+}
+@keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+.hist-emoji{font-size:24px;flex-shrink:0}
+.hist-info{flex:1}
+.hist-name{font-size:13px;color:var(--text);font-weight:500}
+.hist-meta{font-size:10px;color:var(--text3);margin-top:3px;letter-spacing:0.05em}
+.hist-kcal{
+  font-family:'Syne',sans-serif;font-weight:700;font-size:20px;
+  color:var(--green);letter-spacing:-0.02em;text-align:right;
+}
+.hist-kcal-unit{font-size:10px;color:var(--text3)}
+.empty-state{
+  text-align:center;padding:60px 20px;color:var(--text3);
+  font-size:13px;line-height:1.8;
+}
+.empty-icon{font-size:48px;margin-bottom:16px;opacity:0.4}
+
+/* ===== SCREEN 3: PERFIL ===== */
+.profile-wrap{padding:24px 20px}
+.profile-title{
+  font-family:'Syne',sans-serif;font-weight:800;font-size:24px;
+  letter-spacing:-0.03em;margin-bottom:24px;
+}
+.profile-field{margin-bottom:16px}
+.profile-label{
+  font-size:10px;letter-spacing:0.2em;text-transform:uppercase;
+  color:var(--text3);margin-bottom:8px;
+}
+.profile-input{
+  width:100%;background:var(--card);border:1px solid var(--border);
+  color:var(--text);font-family:'DM Mono',monospace;font-size:15px;
+  padding:12px 16px;border-radius:10px;outline:none;transition:border-color 0.2s;
+}
+.profile-input:focus{border-color:var(--green)}
+.gender-row{display:flex;gap:8px}
+.gender-btn{
+  flex:1;padding:12px;text-align:center;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;color:var(--text2);cursor:pointer;
+  font-family:'DM Mono',monospace;font-size:13px;transition:all 0.2s;
+}
+.gender-btn.active{border-color:var(--green);background:var(--green-glow);color:var(--green)}
+
+.google-fit-btn{
+  margin-top:24px;width:100%;padding:16px;
+  background:var(--card);border:1px solid var(--border2);
+  border-radius:12px;color:var(--text2);cursor:pointer;
+  font-family:'DM Mono',monospace;font-size:12px;
+  letter-spacing:0.08em;display:flex;align-items:center;
+  justify-content:center;gap:10px;transition:all 0.3s;
+}
+.google-fit-btn:hover{border-color:var(--green-dim);color:var(--green);background:var(--green-glow)}
+.google-fit-btn.connected{border-color:var(--green);color:var(--green);background:var(--green-glow)}
+
+.save-btn{
+  margin-top:16px;width:100%;padding:16px;
+  background:var(--green);border:none;border-radius:12px;
+  color:var(--bg);font-family:'Syne',sans-serif;font-weight:700;
+  font-size:15px;cursor:pointer;transition:all 0.2s;
+}
+.save-btn:active{transform:scale(0.98)}
+
+/* INSTALL BANNER */
+.install-banner{
+  margin:0 20px 16px;padding:14px 16px;
+  background:var(--green-glow);border:1px solid var(--green-dim);
+  border-radius:10px;display:flex;align-items:center;gap:12px;
+  cursor:pointer;
+}
+.install-text{flex:1;font-size:11px;color:var(--text2);line-height:1.5}
+.install-text strong{color:var(--green);display:block;font-size:12px;margin-bottom:2px}
+.install-x{color:var(--text3);font-size:16px;padding:4px}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:calc(80px + var(--safe-bottom));left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:var(--card);border:1px solid var(--green-dim);
+  color:var(--green);padding:10px 20px;border-radius:20px;
+  font-size:12px;letter-spacing:0.05em;opacity:0;
+  transition:all 0.3s;z-index:100;white-space:nowrap;
+  pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">Burn<span>Track</span></div>
+  <div class="gps-badge" id="gpsBadge" onclick="toggleGPS()">
+    <div class="gps-dot" id="gpsDot"></div>
+    <span id="gpsLabel">GPS</span>
+  </div>
+</div>
+
+<div class="nav">
+  <button class="nav-btn active" onclick="showScreen('tracker',this)">Actividad</button>
+  <button class="nav-btn" onclick="showScreen('history',this)">Historial</button>
+  <button class="nav-btn" onclick="showScreen('profile',this)">Perfil</button>
+</div>
+
+<!-- ===== TRACKER ===== -->
+<div class="screen active" id="screen-tracker">
+
+  <div id="installBanner" class="install-banner" onclick="installPWA()" style="display:none;margin-top:12px">
+    <span style="font-size:20px">📲</span>
+    <div class="install-text">
+      <strong>Instalar BurnTrack</strong>
+      Agregá la app a tu pantalla de inicio para usarla sin internet
+    </div>
+    <span class="install-x" onclick="event.stopPropagation();document.getElementById('installBanner').style.display='none'">✕</span>
+  </div>
+
+  <div class="calorie-ring-wrap">
+    <div class="ring-container">
+      <svg class="ring-svg" width="200" height="200" viewBox="0 0 200 200">
+        <circle class="ring-bg" cx="100" cy="100" r="90"/>
+        <circle class="ring-fill" id="ringFill" cx="100" cy="100" r="90"/>
+      </svg>
+      <div class="ring-center">
+        <div class="ring-kcal" id="ringKcal">0</div>
+        <div class="ring-unit">kcal</div>
+        <div class="ring-label" id="ringLabel">quemadas</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="session-info">
+    <div class="info-box">
+      <div class="info-box-label">Tiempo</div>
+      <div class="info-box-val" id="timerDisplay">00:00</div>
+    </div>
+    <div class="info-box">
+      <div class="info-box-label">Ritmo</div>
+      <div class="info-box-val green" id="rateDisplay">— kcal/min</div>
+    </div>
+    <div class="info-box">
+      <div class="info-box-label">Hoy total</div>
+      <div class="info-box-val" id="todayDisplay">0</div>
+    </div>
+  </div>
+
+  <div class="speed-bar hidden" id="speedBar">
+    <span class="speed-icon">🛰</span>
+    <div class="speed-info">
+      <div class="speed-val"><span id="speedVal">0.0</span> <span style="font-size:12px;font-weight:400">km/h</span></div>
+      <div class="speed-label">velocidad GPS</div>
+      <div class="distance-val" id="distanceVal">0.00 km recorridos</div>
+    </div>
+  </div>
+
+  <div class="weight-row">
+    <label>Peso (kg)</label>
+    <input class="weight-input" id="weightInput" type="number" min="30" max="200" value="70" placeholder="70"/>
+  </div>
+
+  <div class="section-head">Seleccioná la actividad</div>
+  <div class="activity-grid" id="activityGrid"></div>
+
+  <div class="timer-section">
+    <button class="btn-start idle" id="btnStart" onclick="toggleTimer()">▶ Iniciar</button>
+    <button class="btn-stop" id="btnStop" onclick="stopSession()">■ Guardar</button>
+  </div>
+
+</div>
+
+<!-- ===== HISTORY ===== -->
+<div class="screen" id="screen-history">
+  <div class="history-header">Historial</div>
+  <div class="day-total">
+    <div>
+      <div class="day-total-label">Quemado hoy</div>
+      <div class="day-total-kcal" id="dayTotalDate"></div>
+    </div>
+    <div style="text-align:right">
+      <div class="day-total-val" id="dayTotalKcal">0</div>
+      <div class="day-total-kcal">kcal</div>
+    </div>
+  </div>
+  <div class="history-list" id="historyList"></div>
+</div>
+
+<!-- ===== PROFILE ===== -->
+<div class="screen" id="screen-profile">
+  <div class="profile-wrap">
+    <div class="profile-title">Mi Perfil</div>
+
+    <div class="profile-field">
+      <div class="profile-label">Nombre</div>
+      <input class="profile-input" id="profileName" type="text" placeholder="Tu nombre"/>
+    </div>
+
+    <div class="profile-field">
+      <div class="profile-label">Peso (kg)</div>
+      <input class="profile-input" id="profileWeight" type="number" min="30" max="200" placeholder="70"/>
+    </div>
+
+    <div class="profile-field">
+      <div class="profile-label">Edad</div>
+      <input class="profile-input" id="profileAge" type="number" min="10" max="100" placeholder="25"/>
+    </div>
+
+    <div class="profile-field">
+      <div class="profile-label">Género</div>
+      <div class="gender-row">
+        <div class="gender-btn active" id="gBio" onclick="setGender('bio',this)">Hombre</div>
+        <div class="gender-btn" id="gFem" onclick="setGender('fem',this)">Mujer</div>
+      </div>
+    </div>
+
+    <div class="profile-field">
+      <div class="profile-label">Objetivo diario (kcal)</div>
+      <input class="profile-input" id="profileGoal" type="number" placeholder="500"/>
+    </div>
+
+    <button class="google-fit-btn" id="googleFitBtn" onclick="connectGoogleFit()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" fill="#4CAF50" opacity="0.3"/>
+        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="currentColor"/>
+      </svg>
+      Conectar Google Health / Fit
+    </button>
+
+    <button class="save-btn" onclick="saveProfile()">Guardar perfil</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===================== DATA =====================
+const ACTIVITIES = [
+  {id:'walk',   name:'Caminar',      emoji:'🚶', met:3.5,  gps:true},
+  {id:'run',    name:'Correr',       emoji:'🏃', met:9.8,  gps:true},
+  {id:'bike',   name:'Bicicleta',    emoji:'🚴', met:7.5,  gps:true},
+  {id:'swim',   name:'Natación',     emoji:'🏊', met:8.0,  gps:false},
+  {id:'hiit',   name:'HIIT',         emoji:'🔥', met:10.5, gps:false},
+  {id:'yoga',   name:'Yoga',         emoji:'🧘', met:2.5,  gps:false},
+  {id:'weights',name:'Pesas',        emoji:'🏋️', met:5.0,  gps:false},
+  {id:'dance',  name:'Baile',        emoji:'💃', met:7.0,  gps:false},
+  {id:'soccer', name:'Fútbol',       emoji:'⚽', met:10.0, gps:false},
+  {id:'tennis', name:'Tenis',        emoji:'🎾', met:7.3,  gps:false},
+  {id:'box',    name:'Boxeo',        emoji:'🥊', met:9.0,  gps:false},
+  {id:'stairs', name:'Escaleras',    emoji:'🪜', met:8.0,  gps:false},
+  {id:'jump',   name:'Saltar soga',  emoji:'⏩', met:11.0, gps:false},
+  {id:'stretch',name:'Estiramiento', emoji:'🙆', met:2.3,  gps:false},
+];
+
+// ===================== STATE =====================
+let state = {
+  selectedAct: ACTIVITIES[0],
+  timerRunning: false,
+  timerPaused: false,
+  elapsed: 0,       // seconds
+  intervalId: null,
+  sessionCalories: 0,
+  weight: 70,
+  goal: 500,
+  gender: 'bio',
+  gpsEnabled: false,
+  gpsWatchId: null,
+  speed: 0,         // km/h
+  distance: 0,      // km
+  lastPos: null,
+  history: [],
+  deferredPrompt: null,
+};
+
+// ===================== LOAD SAVED DATA =====================
+function loadData(){
+  try{
+    const h = localStorage.getItem('bt_history');
+    if(h) state.history = JSON.parse(h);
+    const p = localStorage.getItem('bt_profile');
+    if(p){
+      const prof = JSON.parse(p);
+      document.getElementById('profileName').value   = prof.name   || '';
+      document.getElementById('profileWeight').value = prof.weight || 70;
+      document.getElementById('profileAge').value    = prof.age    || '';
+      document.getElementById('profileGoal').value   = prof.goal   || 500;
+      document.getElementById('weightInput').value   = prof.weight || 70;
+      state.weight = prof.weight || 70;
+      state.goal   = prof.goal   || 500;
+      state.gender = prof.gender || 'bio';
+      setGender(state.gender, document.getElementById(state.gender==='bio'?'gBio':'gFem'), true);
+    }
+  }catch(e){}
+}
+
+// ===================== ACTIVITY GRID =====================
+function buildGrid(){
+  const grid = document.getElementById('activityGrid');
+  grid.innerHTML = '';
+  ACTIVITIES.forEach(act=>{
+    const div = document.createElement('div');
+    div.className = 'act-card' + (act.id===state.selectedAct.id?' selected':'');
+    div.innerHTML = `<span class="act-emoji">${act.emoji}</span>
+      <div class="act-info">
+        <div class="act-name">${act.name}</div>
+        <div class="act-met">MET ${act.met}</div>
+      </div>`;
+    div.onclick = ()=>selectActivity(act);
+    grid.appendChild(div);
+  });
+}
+
+function selectActivity(act){
+  if(state.timerRunning) return;
+  state.selectedAct = act;
+  buildGrid();
+  document.getElementById('speedBar').classList.toggle('hidden', !act.gps);
+}
+
+// ===================== TIMER =====================
+function toggleTimer(){
+  if(!state.timerRunning && !state.timerPaused){
+    startSession();
+  } else if(state.timerRunning){
+    pauseSession();
+  } else {
+    resumeSession();
+  }
+}
+
+function startSession(){
+  state.weight = parseFloat(document.getElementById('weightInput').value)||70;
+  state.elapsed = 0;
+  state.sessionCalories = 0;
+  state.timerRunning = true;
+  state.timerPaused = false;
+  if(state.gpsEnabled && state.selectedAct.gps) startGPSTracking();
+  state.intervalId = setInterval(tick, 1000);
+  updateStartBtn();
+  updateRing(0);
+}
+
+function pauseSession(){
+  state.timerRunning = false;
+  state.timerPaused = true;
+  clearInterval(state.intervalId);
+  updateStartBtn();
+}
+
+function resumeSession(){
+  state.timerRunning = true;
+  state.timerPaused = false;
+  state.intervalId = setInterval(tick, 1000);
+  updateStartBtn();
+}
+
+function stopSession(){
+  if(state.elapsed < 5){ showToast('Iniciá una actividad primero'); return; }
+  clearInterval(state.intervalId);
+  if(state.gpsWatchId) navigator.geolocation.clearWatch(state.gpsWatchId);
+  
+  // Save to history
+  const entry = {
+    id: Date.now(),
+    act: state.selectedAct,
+    duration: state.elapsed,
+    calories: Math.round(state.sessionCalories),
+    distance: state.distance,
+    ts: new Date().toISOString(),
+  };
+  state.history.unshift(entry);
+  localStorage.setItem('bt_history', JSON.stringify(state.history.slice(0,100)));
+  
+  showToast(`✓ ${Math.round(state.sessionCalories)} kcal guardadas`);
+  
+  // Reset
+  state.timerRunning = false;
+  state.timerPaused = false;
+  state.elapsed = 0;
+  state.sessionCalories = 0;
+  state.distance = 0;
+  state.lastPos = null;
+  state.speed = 0;
+  
+  updateTimerDisplay();
+  updateRing(0);
+  updateRateDisplay();
+  document.getElementById('btnStart').className='btn-start idle';
+  document.getElementById('btnStart').textContent='▶ Iniciar';
+  document.getElementById('btnStop').className='btn-stop';
+  renderHistory();
+  updateTodayTotal();
+}
+
+function tick(){
+  state.elapsed++;
+  state.sessionCalories = calcCalories(state.elapsed, state.selectedAct.met, state.weight);
+  updateTimerDisplay();
+  updateRing(state.sessionCalories);
+  updateRateDisplay();
+  updateTodayTotal();
+}
+
+function calcCalories(seconds, met, weight){
+  // Formula: kcal = MET × weight(kg) × time(hours)
+  return met * weight * (seconds / 3600);
+}
+
+function updateTimerDisplay(){
+  const m = Math.floor(state.elapsed/60);
+  const s = state.elapsed%60;
+  document.getElementById('timerDisplay').textContent = 
+    String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+
+function updateRing(kcal){
+  const rounded = Math.round(kcal);
+  document.getElementById('ringKcal').textContent = rounded;
+  
+  const pct = Math.min(rounded / state.goal, 1);
+  const dash = 565;
+  document.getElementById('ringFill').style.strokeDashoffset = dash - (dash * pct);
+  
+  // Color shift
+  const fill = document.getElementById('ringFill');
+  if(pct > 0.9) fill.style.stroke = 'var(--red)';
+  else if(pct > 0.6) fill.style.stroke = 'var(--orange)';
+  else fill.style.stroke = 'var(--green)';
+}
+
+function updateRateDisplay(){
+  if(state.elapsed < 10){
+    document.getElementById('rateDisplay').textContent = '— kcal/min';
+    return;
+  }
+  const rate = (state.sessionCalories / state.elapsed) * 60;
+  document.getElementById('rateDisplay').textContent = rate.toFixed(1)+' kcal/min';
+}
+
+function updateStartBtn(){
+  const btn = document.getElementById('btnStart');
+  if(state.timerRunning){
+    btn.className='btn-start running';
+    btn.textContent='⏸ Pausar';
+    document.getElementById('btnStop').className='btn-stop danger';
+  } else if(state.timerPaused){
+    btn.className='btn-start paused';
+    btn.textContent='▶ Continuar';
+  } else {
+    btn.className='btn-start idle';
+    btn.textContent='▶ Iniciar';
+    document.getElementById('btnStop').className='btn-stop';
+  }
+}
+
+// ===================== GPS =====================
+function toggleGPS(){
+  if(!state.gpsEnabled){
+    if(!navigator.geolocation){ showToast('GPS no disponible en este dispositivo'); return; }
+    navigator.geolocation.getCurrentPosition(
+      ()=>{
+        state.gpsEnabled = true;
+        updateGPSBadge();
+        showToast('✓ GPS activado');
+      },
+      (err)=>{
+        if(err.code===1) showToast('Permiso de ubicación denegado');
+        else showToast('Error al obtener ubicación');
+      },
+      {enableHighAccuracy:true, timeout:10000}
+    );
+  } else {
+    state.gpsEnabled = false;
+    if(state.gpsWatchId){ navigator.geolocation.clearWatch(state.gpsWatchId); state.gpsWatchId=null; }
+    updateGPSBadge();
+    showToast('GPS desactivado');
+  }
+}
+
+function updateGPSBadge(){
+  const badge = document.getElementById('gpsBadge');
+  const label = document.getElementById('gpsLabel');
+  badge.classList.toggle('active', state.gpsEnabled);
+  label.textContent = state.gpsEnabled ? 'GPS ON' : 'GPS';
+}
+
+function startGPSTracking(){
+  state.distance = 0;
+  state.lastPos = null;
+  state.gpsWatchId = navigator.geolocation.watchPosition(
+    pos => {
+      const {latitude:lat, longitude:lng, speed} = pos.coords;
+      state.speed = speed ? (speed * 3.6) : 0; // m/s → km/h
+      
+      if(state.lastPos){
+        const d = haversine(state.lastPos.lat, state.lastPos.lng, lat, lng);
+        state.distance += d;
+      }
+      state.lastPos = {lat, lng};
+      
+      document.getElementById('speedVal').textContent = state.speed.toFixed(1);
+      document.getElementById('distanceVal').textContent = state.distance.toFixed(2)+' km recorridos';
+    },
+    ()=>{},
+    {enableHighAccuracy:true, maximumAge:2000, timeout:5000}
+  );
+}
+
+function haversine(lat1,lon1,lat2,lon2){
+  const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// ===================== HISTORY =====================
+function renderHistory(){
+  const list = document.getElementById('historyList');
+  const today = new Date().toDateString();
+  const todayItems = state.history.filter(h=>new Date(h.ts).toDateString()===today);
+  
+  if(todayItems.length===0){
+    list.innerHTML=`<div class="empty-state">
+      <div class="empty-icon">🏃</div>
+      No hay actividades registradas hoy.<br/>
+      ¡Iniciá tu primera sesión!
+    </div>`;
+    return;
+  }
+  
+  list.innerHTML = todayItems.map(h=>{
+    const dur = formatDuration(h.duration);
+    const dist = h.distance>0.01 ? ` · ${h.distance.toFixed(2)} km` : '';
+    const time = new Date(h.ts).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="hist-item">
+      <span class="hist-emoji">${h.act.emoji}</span>
+      <div class="hist-info">
+        <div class="hist-name">${h.act.name}</div>
+        <div class="hist-meta">${time} · ${dur}${dist}</div>
+      </div>
+      <div>
+        <div class="hist-kcal">${h.calories}</div>
+        <div class="hist-kcal-unit">kcal</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateTodayTotal(){
+  const today = new Date().toDateString();
+  const todayKcal = state.history
+    .filter(h=>new Date(h.ts).toDateString()===today)
+    .reduce((sum,h)=>sum+h.calories,0);
+  const current = state.timerRunning ? Math.round(state.sessionCalories) : 0;
+  document.getElementById('todayDisplay').textContent = Math.round(todayKcal + current);
+  document.getElementById('dayTotalKcal').textContent = Math.round(todayKcal + current);
+  
+  const now = new Date();
+  document.getElementById('dayTotalDate').textContent = 
+    now.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'short'});
+}
+
+function formatDuration(secs){
+  const m=Math.floor(secs/60), s=secs%60;
+  if(m===0) return `${s}s`;
+  if(s===0) return `${m}m`;
+  return `${m}m ${s}s`;
+}
+
+// ===================== PROFILE =====================
+function setGender(g, el, silent){
+  state.gender = g;
+  document.querySelectorAll('.gender-btn').forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  if(!silent) showToast(g==='bio'?'Perfil: Hombre':'Perfil: Mujer');
+}
+
+function saveProfile(){
+  const profile = {
+    name:   document.getElementById('profileName').value,
+    weight: parseFloat(document.getElementById('profileWeight').value)||70,
+    age:    parseInt(document.getElementById('profileAge').value)||25,
+    goal:   parseInt(document.getElementById('profileGoal').value)||500,
+    gender: state.gender,
+  };
+  localStorage.setItem('bt_profile', JSON.stringify(profile));
+  state.weight = profile.weight;
+  state.goal   = profile.goal;
+  document.getElementById('weightInput').value = profile.weight;
+  showToast('✓ Perfil guardado');
+}
+
+function connectGoogleFit(){
+  const btn = document.getElementById('googleFitBtn');
+  // Google Fit OAuth — requires registered OAuth client in Google Cloud Console
+  // To activar: registrá tu app en console.cloud.google.com, habilitá Fitness API,
+  // creá un OAuth 2.0 client ID y reemplazá CLIENT_ID abajo.
+  const CLIENT_ID = '717694451600-ksksdg7i2r1o9411rhpnrg0cd399oe4j.apps.googleusercontent.com';
+  const SCOPE = 'https://www.googleapis.com/auth/fitness.activity.write https://www.googleapis.com/auth/fitness.body.read';
+  const REDIRECT = window.location.origin + window.location.pathname;
+  
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT)}&response_type=token&scope=${encodeURIComponent(SCOPE)}`;
+  window.location.href = authUrl;
+}
+
+// Check for Google Fit OAuth token on load
+function checkGoogleFitToken(){
+  const hash = window.location.hash;
+  if(hash.includes('access_token')){
+    const token = hash.match(/access_token=([^&]+)/)?.[1];
+    if(token){
+      localStorage.setItem('bt_gfit_token', token);
+      document.getElementById('googleFitBtn').classList.add('connected');
+      document.getElementById('googleFitBtn').innerHTML = '✓ Google Health conectado';
+      window.history.replaceState({}, '', window.location.pathname);
+      showToast('✓ Google Health conectado');
+    }
+  } else if(localStorage.getItem('bt_gfit_token')){
+    document.getElementById('googleFitBtn').classList.add('connected');
+    document.getElementById('googleFitBtn').innerHTML = '✓ Google Health conectado';
+  }
+}
+
+// ===================== NAV =====================
+function showScreen(id, btn){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(id==='history') renderHistory();
+}
+
+// ===================== TOAST =====================
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+// ===================== PWA INSTALL =====================
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault();
+  state.deferredPrompt = e;
+  document.getElementById('installBanner').style.display = 'flex';
+});
+
+function installPWA(){
+  if(!state.deferredPrompt) return;
+  state.deferredPrompt.prompt();
+  state.deferredPrompt.userChoice.then(()=>{
+    state.deferredPrompt = null;
+    document.getElementById('installBanner').style.display = 'none';
+  });
+}
+
+// ===================== SERVICE WORKER =====================
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+
+// ===================== INIT =====================
+loadData();
+buildGrid();
+updateTodayTotal();
+renderHistory();
+checkGoogleFitToken();
+</script>
+</body>
+</html>
